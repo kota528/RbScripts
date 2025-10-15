@@ -1,0 +1,436 @@
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local autoClickEnabled = false
+local clickInterval = 0.1
+local clickDelay = 0.05
+local clickPosition = Vector2.new(0, 0)
+local menuVisible = true
+local menuExpanded = true
+
+-- Создаем GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player.PlayerGui
+
+-- Основной фрейм
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 280, 0, 240)
+frame.Position = UDim2.new(0, 10, 0, 10)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = frame
+
+-- Заголовок для перемещения
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 25)
+header.Position = UDim2.new(0, 0, 0, 0)
+header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+header.BackgroundTransparency = 0.1
+header.BorderSizePixel = 0
+header.Parent = frame
+
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 8)
+headerCorner.Parent = header
+
+-- Кнопка закрытия (крестик)
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 20, 0, 20)
+closeButton.Position = UDim2.new(1, -25, 0, 2)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "×"
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 16
+closeButton.Parent = header
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 4)
+closeCorner.Parent = closeButton
+
+-- Кнопка сворачивания (прямоугольник)
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 20, 0, 20)
+minimizeButton.Position = UDim2.new(1, -50, 0, 2)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.Text = "―"
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.TextSize = 16
+minimizeButton.Parent = header
+
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(0, 4)
+minimizeCorner.Parent = minimizeButton
+
+-- Заголовок текста
+local headerLabel = Instance.new("TextLabel")
+headerLabel.Size = UDim2.new(1, -60, 1, 0)
+headerLabel.Position = UDim2.new(0, 10, 0, 0)
+headerLabel.BackgroundTransparency = 1
+headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+headerLabel.Text = "Автокликер"
+headerLabel.Font = Enum.Font.GothamBold
+headerLabel.TextSize = 12
+headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+headerLabel.Parent = header
+
+-- Контейнер для содержимого (будет скрываться при сворачивании)
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, 0, 1, -25)
+contentFrame.Position = UDim2.new(0, 0, 0, 25)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = frame
+
+-- Визуальная точка (основная для перетаскивания)
+local visualDot = Instance.new("Frame")
+visualDot.Size = UDim2.new(0, 20, 0, 20)
+visualDot.Position = UDim2.new(0.5, -10, 0.5, -10)
+visualDot.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+visualDot.BackgroundTransparency = 0.3
+visualDot.BorderSizePixel = 0
+visualDot.ZIndex = 10
+visualDot.Parent = screenGui
+
+local dotCorner = Instance.new("UICorner")
+dotCorner.CornerRadius = UDim.new(1, 0)
+dotCorner.Parent = visualDot
+
+-- Невидимая точка для кликов (следует за визуальной, но на 50 пикселей ниже)
+local clickDot = Instance.new("Frame")
+clickDot.Size = UDim2.new(0, 1, 0, 1)
+clickDot.BackgroundTransparency = 1
+clickDot.BorderSizePixel = 0
+clickDot.ZIndex = 9
+clickDot.Parent = screenGui
+
+-- Элементы интерфейса внутри contentFrame
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 30)
+statusLabel.Position = UDim2.new(0, 0, 0, 5)
+statusLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+statusLabel.BackgroundTransparency = 0.3
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+statusLabel.Text = "Автокликер: ВЫКЛ"
+statusLabel.Font = Enum.Font.GothamBold
+statusLabel.TextSize = 14
+statusLabel.Parent = contentFrame
+
+local statusCorner = Instance.new("UICorner")
+statusCorner.CornerRadius = UDim.new(0, 8)
+statusCorner.Parent = statusLabel
+
+-- Фрейм для настроек интервала
+local intervalFrame = Instance.new("Frame")
+intervalFrame.Size = UDim2.new(0.9, 0, 0, 60)
+intervalFrame.Position = UDim2.new(0.05, 0, 0, 45)
+intervalFrame.BackgroundTransparency = 1
+intervalFrame.Parent = contentFrame
+
+local intervalLabel = Instance.new("TextLabel")
+intervalLabel.Size = UDim2.new(1, 0, 0, 20)
+intervalLabel.Position = UDim2.new(0, 0, 0, 0)
+intervalLabel.BackgroundTransparency = 1
+intervalLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+intervalLabel.Text = "Интервал между кликами (сек):"
+intervalLabel.Font = Enum.Font.Gotham
+intervalLabel.TextSize = 12
+intervalLabel.TextXAlignment = Enum.TextXAlignment.Left
+intervalLabel.Parent = intervalFrame
+
+local intervalBox = Instance.new("TextBox")
+intervalBox.Size = UDim2.new(1, 0, 0, 30)
+intervalBox.Position = UDim2.new(0, 0, 0, 25)
+intervalBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+intervalBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+intervalBox.Text = tostring(clickInterval)
+intervalBox.Font = Enum.Font.Gotham
+intervalBox.TextSize = 14
+intervalBox.PlaceholderText = "0.1"
+intervalBox.Parent = intervalFrame
+
+local boxCorner = Instance.new("UICorner")
+boxCorner.CornerRadius = UDim.new(0, 4)
+boxCorner.Parent = intervalBox
+
+-- Фрейм для задержки клика
+local delayFrame = Instance.new("Frame")
+delayFrame.Size = UDim2.new(0.9, 0, 0, 60)
+delayFrame.Position = UDim2.new(0.05, 0, 0, 115)
+delayFrame.BackgroundTransparency = 1
+delayFrame.Parent = contentFrame
+
+local delayLabel = Instance.new("TextLabel")
+delayLabel.Size = UDim2.new(1, 0, 0, 20)
+delayLabel.Position = UDim2.new(0, 0, 0, 0)
+delayLabel.BackgroundTransparency = 1
+delayLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+delayLabel.Text = "Задержка клика (сек):"
+delayLabel.Font = Enum.Font.Gotham
+delayLabel.TextSize = 12
+delayLabel.TextXAlignment = Enum.TextXAlignment.Left
+delayLabel.Parent = delayFrame
+
+local delayBox = Instance.new("TextBox")
+delayBox.Size = UDim2.new(1, 0, 0, 30)
+delayBox.Position = UDim2.new(0, 0, 0, 25)
+delayBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+delayBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+delayBox.Text = tostring(clickDelay)
+delayBox.Font = Enum.Font.Gotham
+delayBox.TextSize = 14
+delayBox.PlaceholderText = "0.05"
+delayBox.Parent = delayFrame
+
+local delayBoxCorner = Instance.new("UICorner")
+delayBoxCorner.CornerRadius = UDim.new(0, 4)
+delayBoxCorner.Parent = delayBox
+
+-- Кнопка переключения
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0.9, 0, 0, 35)
+toggleButton.Position = UDim2.new(0.05, 0, 0, 185)
+toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Text = "ВКЛЮЧИТЬ (F)"
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 14
+toggleButton.Parent = contentFrame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 6)
+buttonCorner.Parent = toggleButton
+
+-- Функция обновления позиции невидимой точки
+local function updateClickDotPosition()
+    local visualPos = visualDot.AbsolutePosition
+    local visualSize = visualDot.AbsoluteSize
+    local centerX = visualPos.X + (visualSize.X / 2)
+    local centerY = visualPos.Y + (visualSize.Y / 2) + 50 -- Смещение на 50 пикселей вниз
+    
+    clickDot.Position = UDim2.new(0, centerX, 0, centerY)
+end
+
+-- Функция для получения позиции клика
+local function getClickPosition()
+    return Vector2.new(clickDot.AbsolutePosition.X, clickDot.AbsolutePosition.Y)
+end
+
+-- Функция для выполнения клика по позиции точки
+local function performClick()
+    local clickPos = getClickPosition()
+    local x, y = clickPos.X, clickPos.Y
+    
+    VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+    task.wait(clickDelay)
+    VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+end
+
+-- Цикл автокликера
+local function autoClickLoop()
+    while autoClickEnabled and menuVisible do
+        performClick()
+        task.wait(clickInterval)
+    end
+end
+
+-- Обновление интерфейса
+local function updateUI()
+    if autoClickEnabled then
+        statusLabel.Text = "Автокликер: ВКЛ"
+        statusLabel.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        toggleButton.Text = "ВЫКЛЮЧИТЬ (F)"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        visualDot.Visible = false
+    else
+        statusLabel.Text = "Автокликер: ВЫКЛ"
+        statusLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        toggleButton.Text = "ВКЛЮЧИТЬ (F)"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        visualDot.Visible = true
+    end
+end
+
+-- Функция сворачивания/разворачивания меню
+local function toggleMenu()
+    menuExpanded = not menuExpanded
+    
+    if menuExpanded then
+        -- Разворачиваем меню
+        frame.Size = UDim2.new(0, 280, 0, 240)
+        contentFrame.Visible = true
+        minimizeButton.Text = "―"
+        minimizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    else
+        -- Сворачиваем меню
+        frame.Size = UDim2.new(0, 280, 0, 25)
+        contentFrame.Visible = false
+        minimizeButton.Text = "+"
+        minimizeButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+    end
+end
+
+-- Функция закрытия меню
+local function closeMenu()
+    menuVisible = false
+    frame.Visible = false
+    visualDot.Visible = false
+    -- Останавливаем автокликер при закрытии
+    if autoClickEnabled then
+        autoClickEnabled = false
+        print("🛑 Автокликер остановлен (меню закрыто)")
+    end
+end
+
+-- Обработчики кнопок
+closeButton.MouseButton1Click:Connect(closeMenu)
+minimizeButton.MouseButton1Click:Connect(toggleMenu)
+
+-- Обработчик изменения интервала
+intervalBox.FocusLost:Connect(function(enterPressed)
+    local newInterval = tonumber(intervalBox.Text)
+    if newInterval and newInterval > 0 and newInterval <= 10 then
+        clickInterval = newInterval
+        intervalBox.Text = tostring(clickInterval)
+        print("✅ Интервал установлен: " .. clickInterval .. "с")
+    else
+        intervalBox.Text = tostring(clickInterval)
+        print("❌ Неверный интервал! Используйте число от 0.01 до 10")
+    end
+end)
+
+-- Обработчик изменения задержки клика
+delayBox.FocusLost:Connect(function(enterPressed)
+    local newDelay = tonumber(delayBox.Text)
+    if newDelay and newDelay >= 0 and newDelay <= 2 then
+        clickDelay = newDelay
+        delayBox.Text = tostring(clickDelay)
+        print("✅ Задержка клика установлена: " .. clickDelay .. "с")
+    else
+        delayBox.Text = tostring(clickDelay)
+        print("❌ Неверная задержка! Используйте число от 0 до 2")
+    end
+end)
+
+-- Обработчик кнопки переключения
+toggleButton.MouseButton1Click:Connect(function()
+    if not menuVisible then return end -- Не реагировать если меню закрыто
+    
+    autoClickEnabled = not autoClickEnabled
+    
+    if autoClickEnabled then
+        task.spawn(autoClickLoop)
+    end
+    
+    updateUI()
+end)
+
+-- Обработчик клавиатуры
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if not menuVisible then return end -- Не реагировать на F если меню закрыто
+    
+    if input.KeyCode == Enum.KeyCode.F then
+        autoClickEnabled = not autoClickEnabled
+        
+        if autoClickEnabled then
+            task.spawn(autoClickLoop)
+        end
+        
+        updateUI()
+    end
+end)
+
+-- Функционал перетаскивания для visualDot
+local dotDragging = false
+local dotDragOffset = Vector2.new(0, 0)
+
+visualDot.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dotDragging = true
+        local mousePos = Vector2.new(input.Position.X, input.Position.Y)
+        dotDragOffset = Vector2.new(visualDot.AbsolutePosition.X, visualDot.AbsolutePosition.Y) - mousePos
+    end
+end)
+
+visualDot.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dotDragging = false
+    end
+end)
+
+-- Функционал перетаскивания меню
+local frameDragging = false
+local frameDragOffset = Vector2.new(0, 0)
+
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        frameDragging = true
+        frameDragOffset = frame.AbsolutePosition - Vector2.new(input.Position.X, input.Position.Y)
+    end
+end)
+
+header.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        frameDragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    -- Перетаскивание визуальной точки
+    if dotDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mousePos = Vector2.new(input.Position.X, input.Position.Y)
+        local newPosition = mousePos + dotDragOffset
+        
+        local viewportSize = workspace.CurrentCamera.ViewportSize
+        newPosition = Vector2.new(
+            math.clamp(newPosition.X, 0, viewportSize.X - visualDot.AbsoluteSize.X),
+            math.clamp(newPosition.Y, 0, viewportSize.Y - visualDot.AbsoluteSize.Y)
+        )
+        
+        visualDot.Position = UDim2.new(0, newPosition.X, 0, newPosition.Y)
+        updateClickDotPosition() -- Обновляем позицию невидимой точки
+    end
+    
+    -- Перетаскивание меню
+    if frameDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mousePos = Vector2.new(input.Position.X, input.Position.Y)
+        local newPosition = mousePos + frameDragOffset
+        
+        local viewportSize = workspace.CurrentCamera.ViewportSize
+        newPosition = Vector2.new(
+            math.clamp(newPosition.X, 0, viewportSize.X - frame.AbsoluteSize.X),
+            math.clamp(newPosition.Y, 0, viewportSize.Y - frame.AbsoluteSize.Y)
+        )
+        
+        frame.Position = UDim2.new(0, newPosition.X, 0, newPosition.Y)
+    end
+end)
+
+-- Обновляем позицию точки при изменении размера экрана
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+    if not dotDragging then
+        local viewportSize = workspace.CurrentCamera.ViewportSize
+        visualDot.Position = UDim2.new(0.5, -10, 0.5, -10)
+        updateClickDotPosition()
+    end
+end)
+
+-- Инициализация
+updateUI()
+updateClickDotPosition()
+
+print("🎮 Улучшенный автокликер загружен!")
+print("F - Вкл/Выкл автоклик")
+print("× - Закрыть меню")
+print("― - Свернуть/развернуть меню")
+print("Перетащите заголовок меню для перемещения")
+print("Перетащите красную точку для изменения позиции клика")
