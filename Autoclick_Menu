@@ -5,8 +5,8 @@ local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
 local autoClickEnabled = false
-local clickInterval = 0.1
-local clickDelay = 0.05
+local clickInterval = 0.01
+local clickDelay = 0.01
 local clickPosition = Vector2.new(0, 0)
 local menuVisible = true
 local menuExpanded = true
