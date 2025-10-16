@@ -14,6 +14,7 @@ local menuExpanded = true
 -- Создаем GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = player.PlayerGui
+screenGui.ResetOnSpawn = false
 
 -- Основной фрейм
 local frame = Instance.new("Frame")
