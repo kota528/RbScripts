@@ -1,0 +1,205 @@
+-- Локальный скрипт (LocalScript) поместите в StarterPlayerScripts
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:WaitForChild("PlayerGui")
+
+-- Создание основного интерфейса
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ScriptExecutorUI"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 500, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Заголовок с кнопками управления
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+titleBar.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(0.7, 0, 1, 0)
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Script Executor"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
+
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.Text = "X"
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Parent = titleBar
+
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+minimizeButton.Position = UDim2.new(1, -60, 0, 0)
+minimizeButton.Text = "_"
+minimizeButton.BackgroundColor3 = Color3.fromRGB(255, 180, 60)
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.Parent = titleBar
+
+-- Область для ввода скрипта
+local scroller = Instance.new("ScrollingFrame")
+scroller.Size = UDim2.new(1, -20, 0.8, -10)
+scroller.Position = UDim2.new(0, 10, 0, 40)
+scroller.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+scroller.CanvasSize = UDim2.new(0, 0, 5, 0)
+scroller.ScrollBarThickness = 12
+scroller.Parent = mainFrame
+
+local textBox = Instance.new("TextBox")
+textBox.Size = UDim2.new(1, -5, 1, -5)
+textBox.Position = UDim2.new(0, 5, 0, 5)
+textBox.BackgroundTransparency = 1
+textBox.Text = "print('Hello, Roblox!')\nwait(1)\nprint('Script finished!')"
+textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+textBox.TextXAlignment = Enum.TextXAlignment.Left
+textBox.TextYAlignment = Enum.TextYAlignment.Top
+textBox.TextWrapped = false
+textBox.MultiLine = true
+textBox.TextScaled = false
+textBox.ClearTextOnFocus = false
+textBox.TextSize = 16
+textBox.Font = Enum.Font.Code
+textBox.PlaceholderText = "Введите ваш Lua скрипт здесь..."
+textBox.Parent = scroller
+
+-- Одна кнопка AutoExecute
+local autoExecuteButton = Instance.new("TextButton")
+autoExecuteButton.Size = UDim2.new(0, 120, 0, 40)
+autoExecuteButton.Position = UDim2.new(0.5, -60, 0.85, 0)
+autoExecuteButton.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+autoExecuteButton.Text = "AutoExecute"
+autoExecuteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoExecuteButton.TextSize = 18
+autoExecuteButton.Parent = mainFrame
+
+-- Логика интерфейса
+local isMinimized = false
+local originalSize = mainFrame.Size
+local originalPosition = mainFrame.Position
+
+
+-- Состояние выполнения
+local currentThread = nil
+local isRunning = false
+
+-- Обработчики кнопок
+closeButton.MouseButton1Click:Connect(function()
+	if currentThread and isRunning then
+        task.cancel(currentThread)
+        currentThread = nil
+        isRunning = false
+    end
+    screenGui:Destroy()
+end)
+
+minimizeButton.MouseButton1Click:Connect(function()
+    if isMinimized then
+        -- Восстановление
+        mainFrame.Size = originalSize
+        scroller.Visible = true
+        autoExecuteButton.Visible = true
+        isMinimized = false
+    else
+        -- Сворачивание
+        originalSize = mainFrame.Size
+        originalPosition = mainFrame.Position
+        mainFrame.Size = UDim2.new(0, 400, 0, 30)
+        scroller.Visible = false
+        autoExecuteButton.Visible = false
+        isMinimized = true
+    end
+end)
+
+local function executeUserCode(code)
+    -- Если выполнение уже идет, останавливаем
+    if currentThread and isRunning then
+        task.cancel(currentThread)
+        currentThread = nil
+        isRunning = false
+        autoExecuteButton.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+        autoExecuteButton.Text = "AutoExecute"
+        return
+    end
+    
+    -- Если выполнение уже идет, не начинаем новое
+    if isRunning then
+        return
+    end
+    
+    -- Установка состояния "выполняется"
+    isRunning = true
+    autoExecuteButton.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+    autoExecuteButton.Text = "STOP"
+    
+    -- Автоматически добавляем задержку в циклы while
+    local protectedCode = code:gsub("(while%s+[^%s].-)%s+do", "%1 do task.wait(0.00001); ")
+    
+    -- Создание окружения с доступом ко всем функциям
+    local env = getfenv()
+    env.script = nil -- Защита от случайного использования
+    
+    -- Загрузка и выполнение кода в отдельной корутине
+    currentThread = task.spawn(function()
+        local functionToRun, compileError = loadstring(protectedCode)
+        
+        if not functionToRun then
+            -- Попробуем загрузить как выражение
+            functionToRun, compileError = loadstring("return " .. protectedCode)
+        end
+        
+        if not functionToRun then
+            warn("Ошибка компиляции: " .. tostring(compileError))
+            isRunning = false
+            autoExecuteButton.Text = "AutoExecute"
+            autoExecuteButton.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+            return
+        end
+        
+        -- Установка окружения
+        setfenv(functionToRun, env)
+        
+        local success, runtimeError = pcall(functionToRun)
+        
+        if not success then
+            warn("Ошибка выполнения: " .. tostring(runtimeError))
+        end
+        
+        -- Завершение выполнения
+        isRunning = false
+        currentThread = nil
+        autoExecuteButton.Text = "AutoExecute"
+        autoExecuteButton.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+    end)
+end
+
+-- Обработчик для кнопки AutoExecute
+autoExecuteButton.MouseButton1Click:Connect(function()
+    executeUserCode(textBox.Text)
+end)
+
+-- Обработка Enter в поле ввода
+textBox:GetPropertyChangedSignal("Text"):Connect(function()
+    -- Автоматическое увеличение размера CanvasSize для прокрутки
+    local lineCount = 0
+    for _ in textBox.Text:gmatch("\n") do
+        lineCount = lineCount + 1
+    end
+    scroller.CanvasSize = UDim2.new(0, 0, 0, math.max(400, (lineCount + 5) * 20))
+end)
+
+print("🚀 Script Executor готов к работе!")
+print("💡 Используйте Ctrl+Enter для быстрого выполнения")
+print("💡 Используйте Escape для остановки выполнения")
