@@ -10,6 +10,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "MusicPlayerGUI"
 screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
 
 -- Создаем основной фрейм
 local mainFrame = Instance.new("Frame")
