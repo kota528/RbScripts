@@ -1,0 +1,556 @@
+-- LocalScript в StarterPlayerScripts
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Создаем основной GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MusicPlayerGUI"
+screenGui.Parent = playerGui
+
+-- Создаем основной фрейм
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 350, 0, 250)
+mainFrame.Position = UDim2.new(0.5, -175, 0, 20)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Закругление углов
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+-- Тень
+local shadow = Instance.new("UIStroke")
+shadow.Color = Color3.fromRGB(0, 0, 0)
+shadow.Thickness = 2
+shadow.Parent = mainFrame
+
+-- Заголовок с кнопками управления
+local title = Instance.new("Frame")
+title.Name = "Title"
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+title.BorderSizePixel = 0
+title.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = title
+
+-- Текст заголовка
+local titleText = Instance.new("TextLabel")
+titleText.Name = "TitleText"
+titleText.Size = UDim2.new(1, -80, 1, 0)
+titleText.Position = UDim2.new(0, 10, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleText.Text = "Музыкальный Плеер"
+titleText.Font = Enum.Font.GothamBold
+titleText.TextSize = 18
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = title
+
+-- Кнопка сворачивания
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Name = "MinimizeButton"
+minimizeButton.Size = UDim2.new(0, 25, 0, 25)
+minimizeButton.Position = UDim2.new(1, -60, 0.5, -12.5)
+minimizeButton.AnchorPoint = Vector2.new(1, 0.5)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(255, 193, 7)
+minimizeButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+minimizeButton.Text = "─"
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.TextSize = 16
+minimizeButton.Parent = title
+
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(0, 4)
+minimizeCorner.Parent = minimizeButton
+
+-- Кнопка закрытия
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 25, 0, 25)
+closeButton.Position = UDim2.new(1, -30, 0.5, -12.5)
+closeButton.AnchorPoint = Vector2.new(1, 0.5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "×"
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 16
+closeButton.Parent = title
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 4)
+closeCorner.Parent = closeButton
+
+-- Контент фрейм (будет скрываться при сворачивании)
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, 0, 1, -40)
+contentFrame.Position = UDim2.new(0, 0, 0, 40)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
+
+-- Поле для ввода ID звука
+local inputFrame = Instance.new("Frame")
+inputFrame.Name = "InputFrame"
+inputFrame.Size = UDim2.new(0.9, 0, 0, 40)
+inputFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
+inputFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+inputFrame.BorderSizePixel = 0
+inputFrame.Parent = contentFrame
+
+local inputCorner = Instance.new("UICorner")
+inputCorner.CornerRadius = UDim.new(0, 6)
+inputCorner.Parent = inputFrame
+
+local inputBox = Instance.new("TextBox")
+inputBox.Name = "SoundIdInput"
+inputBox.Size = UDim2.new(1, -20, 1, 0)
+inputBox.Position = UDim2.new(0, 10, 0, 0)
+inputBox.BackgroundTransparency = 1
+inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+inputBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+inputBox.PlaceholderText = "Введите ID звука (по умолчанию: 142376088)"
+inputBox.Text = ""
+inputBox.Font = Enum.Font.Gotham
+inputBox.TextSize = 14
+inputBox.TextXAlignment = Enum.TextXAlignment.Left
+inputBox.Parent = inputFrame
+
+-- Фрейм для кнопок
+local buttonsFrame = Instance.new("Frame")
+buttonsFrame.Name = "ButtonsFrame"
+buttonsFrame.Size = UDim2.new(0.9, 0, 0, 50)
+buttonsFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
+buttonsFrame.BackgroundTransparency = 1
+buttonsFrame.Parent = contentFrame
+
+-- Кнопка воспроизведения/паузы
+local playButton = Instance.new("TextButton")
+playButton.Name = "PlayButton"
+playButton.Size = UDim2.new(0, 120, 1, 0)
+playButton.Position = UDim2.new(0, 0, 0, 0)
+playButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+playButton.Text = "▶ Воспроизвести"
+playButton.Font = Enum.Font.GothamBold
+playButton.TextSize = 16
+playButton.Parent = buttonsFrame
+
+local playButtonCorner = Instance.new("UICorner")
+playButtonCorner.CornerRadius = UDim.new(0, 6)
+playButtonCorner.Parent = playButton
+
+-- Кнопка остановки
+local stopButton = Instance.new("TextButton")
+stopButton.Name = "StopButton"
+stopButton.Size = UDim2.new(0, 120, 1, 0)
+stopButton.Position = UDim2.new(1, -120, 0, 0)
+stopButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+stopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+stopButton.Text = "⏹ Остановить"
+stopButton.Font = Enum.Font.GothamBold
+stopButton.TextSize = 16
+stopButton.Parent = buttonsFrame
+
+local stopButtonCorner = Instance.new("UICorner")
+stopButtonCorner.CornerRadius = UDim.new(0, 6)
+stopButtonCorner.Parent = stopButton
+
+-- Ползунок громкости музыки
+local musicVolumeFrame = Instance.new("Frame")
+musicVolumeFrame.Name = "MusicVolumeFrame"
+musicVolumeFrame.Size = UDim2.new(0.9, 0, 0, 50)
+musicVolumeFrame.Position = UDim2.new(0.05, 0, 0.55, 0)
+musicVolumeFrame.BackgroundTransparency = 1
+musicVolumeFrame.Parent = contentFrame
+
+local musicVolumeLabel = Instance.new("TextLabel")
+musicVolumeLabel.Name = "MusicVolumeLabel"
+musicVolumeLabel.Size = UDim2.new(1, 0, 0, 20)
+musicVolumeLabel.Position = UDim2.new(0, 0, 0, 0)
+musicVolumeLabel.BackgroundTransparency = 1
+musicVolumeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+musicVolumeLabel.Text = "Громкость музыки: 50%"
+musicVolumeLabel.Font = Enum.Font.Gotham
+musicVolumeLabel.TextSize = 14
+musicVolumeLabel.TextXAlignment = Enum.TextXAlignment.Left
+musicVolumeLabel.Parent = musicVolumeFrame
+
+local musicVolumeSlider = Instance.new("Frame")
+musicVolumeSlider.Name = "MusicVolumeSlider"
+musicVolumeSlider.Size = UDim2.new(1, 0, 0, 20)
+musicVolumeSlider.Position = UDim2.new(0, 0, 0, 25)
+musicVolumeSlider.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+musicVolumeSlider.BorderSizePixel = 0
+musicVolumeSlider.Parent = musicVolumeFrame
+
+local musicSliderCorner = Instance.new("UICorner")
+musicSliderCorner.CornerRadius = UDim.new(0, 10)
+musicSliderCorner.Parent = musicVolumeSlider
+
+local musicVolumeFill = Instance.new("Frame")
+musicVolumeFill.Name = "MusicVolumeFill"
+musicVolumeFill.Size = UDim2.new(0.5, 0, 1, 0)
+musicVolumeFill.Position = UDim2.new(0, 0, 0, 0)
+musicVolumeFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+musicVolumeFill.BorderSizePixel = 0
+musicVolumeFill.Parent = musicVolumeSlider
+
+local musicFillCorner = Instance.new("UICorner")
+musicFillCorner.CornerRadius = UDim.new(0, 10)
+musicFillCorner.Parent = musicVolumeFill
+
+local musicVolumeButton = Instance.new("TextButton")
+musicVolumeButton.Name = "MusicVolumeButton"
+musicVolumeButton.Size = UDim2.new(1, 0, 1, 0)
+musicVolumeButton.Position = UDim2.new(0, 0, 0, 0)
+musicVolumeButton.BackgroundTransparency = 1
+musicVolumeButton.Text = ""
+musicVolumeButton.Parent = musicVolumeSlider
+
+-- Статус воспроизведения
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "StatusLabel"
+statusLabel.Size = UDim2.new(0.9, 0, 0, 20)
+statusLabel.Position = UDim2.new(0.05, 0, 0.8, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.Text = "Готов к воспроизведению"
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 12
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = contentFrame
+
+-- Переменные для управления звуком
+local currentSound = nil
+local isPlaying = false
+local wasPlayingBeforePause = false
+local soundPausePosition = 0
+local isMinimized = false
+local isClosed = false
+local musicVolume = 0.5
+
+-- Переменные для отслеживания перетаскивания
+local musicDragging = false
+
+-- Функция для обновления ползунков
+local function updateSliders()
+    musicVolumeFill.Size = UDim2.new(musicVolume, 0, 1, 0)
+    musicVolumeLabel.Text = "Громкость музыки: " .. math.floor(musicVolume * 100) .. "%"
+    
+    -- Применяем громкость к текущему звуку
+    if currentSound then
+        currentSound.Volume = musicVolume
+        -- Если звук играет, обновляем сохраненную позицию
+        if isPlaying then
+            soundPausePosition = currentSound.TimePosition
+        end
+    end
+end
+
+-- Функция для обновления громкости музыки
+local function updateMusicVolume(input)
+    local sliderAbsolutePosition = musicVolumeSlider.AbsolutePosition.X
+    local sliderAbsoluteSize = musicVolumeSlider.AbsoluteSize.X
+    local mouseX = input.Position.X
+    local relativeX = math.clamp(mouseX - sliderAbsolutePosition, 0, sliderAbsoluteSize)
+    local volume = relativeX / sliderAbsoluteSize
+    
+    musicVolume = volume
+    updateSliders()
+end
+
+-- Обработчики событий для ползунка музыки
+musicVolumeButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        musicDragging = true
+        updateMusicVolume(input)
+    end
+end)
+
+musicVolumeButton.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement and musicDragging then
+        updateMusicVolume(input)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        musicDragging = false
+    end
+end)
+
+-- Функция для воспроизведения звука
+local function playSound()
+    if isClosed then
+        return
+    end
+    
+    local soundId = inputBox.Text
+    if soundId == "" or soundId == nil then
+        soundId = "142376088"
+    end
+    
+    -- Если звук уже существует, но не воспроизводится (был на паузе)
+    if currentSound and not isPlaying then
+        -- Восстанавливаем позицию воспроизведения
+        currentSound.TimePosition = soundPausePosition
+        local success, errorMessage = pcall(function()
+            currentSound:Play()
+        end)
+        
+        if success then
+            isPlaying = true
+            if not isClosed then
+                playButton.Text = "⏸ Пауза"
+                statusLabel.Text = "Воспроизведение..."
+            end
+        else
+            if not isClosed then
+                statusLabel.Text = "Ошибка воспроизведения"
+            end
+        end
+        return
+    end
+    
+    -- Если звук другой или его нет, создаем новый
+    if currentSound then
+        currentSound:Stop()
+        currentSound:Destroy()
+        currentSound = nil
+    end
+    
+    -- Создаем новый звук
+    currentSound = Instance.new("Sound")
+    currentSound.SoundId = "rbxassetid://" .. soundId
+    currentSound.Volume = musicVolume
+    currentSound.Looped = true
+    currentSound.Parent = workspace
+    
+    -- Обработчики событий звука
+    currentSound.Loaded:Connect(function()
+        if not isClosed then
+            statusLabel.Text = "Звук загружен"
+        end
+    end)
+    
+    -- Пытаемся воспроизвести звук
+    local success, errorMessage = pcall(function()
+        currentSound:Play()
+    end)
+    
+    if success then
+        isPlaying = true
+        soundPausePosition = 0
+        if not isClosed then
+            playButton.Text = "⏸ Пауза"
+            statusLabel.Text = "Воспроизведение..."
+        end
+    else
+        if not isClosed then
+            statusLabel.Text = "Ошибка: неверный ID звука"
+        end
+        warn("Ошибка воспроизведения звука: " .. errorMessage)
+    end
+end
+
+-- Функция для паузы/возобновления
+local function togglePause()
+    if not currentSound or isClosed then
+        return
+    end
+    
+    if isPlaying then
+        -- Сохраняем текущую позицию воспроизведения перед паузой
+        soundPausePosition = currentSound.TimePosition
+        currentSound:Pause()
+        isPlaying = false
+        playButton.Text = "▶ Воспроизвести"
+        statusLabel.Text = "На паузе (позиция: " .. math.floor(soundPausePosition) .. " сек)"
+    else
+        -- Устанавливаем сохраненную позицию и продолжаем
+        currentSound.TimePosition = soundPausePosition
+        currentSound:Play()
+        isPlaying = true
+        playButton.Text = "⏸ Пауза"
+        statusLabel.Text = "Воспроизведение..."
+    end
+end
+
+-- Функция для остановки звука
+local function stopSound()
+    if currentSound then
+        currentSound:Stop()
+        currentSound:Destroy()
+        currentSound = nil
+    end
+    isPlaying = false
+    soundPausePosition = 0
+    if not isClosed then
+        playButton.Text = "▶ Воспроизвести"
+        statusLabel.Text = "Остановлено"
+    end
+end
+
+-- Функция сворачивания/разворачивания
+local function toggleMinimize()
+    if isClosed then return end
+    
+    isMinimized = not isMinimized
+    
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    
+    if isMinimized then
+        -- Сворачиваем
+        local tween = TweenService:Create(mainFrame, tweenInfo, {
+            Size = UDim2.new(0, 350, 0, 40)
+        })
+        tween:Play()
+        contentFrame.Visible = false
+        minimizeButton.Text = "＋"
+    else
+        -- Разворачиваем
+        local tween = TweenService:Create(mainFrame, tweenInfo, {
+            Size = UDim2.new(0, 350, 0, 250)
+        })
+        tween:Play()
+        contentFrame.Visible = true
+        minimizeButton.Text = "─"
+    end
+end
+
+-- Функция закрытия
+local function closePlayer()
+    if isClosed then return end
+    
+    -- Останавливаем звук
+    stopSound()
+    
+    -- Помечаем как закрытое
+    isClosed = true
+    
+    -- Анимация закрытия
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(mainFrame, tweenInfo, {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0, 20)
+    })
+    tween:Play()
+    
+    -- Удаляем GUI после анимации
+    tween.Completed:Connect(function()
+        screenGui:Destroy()
+    end)
+end
+
+-- Обработчики кнопок
+playButton.MouseButton1Click:Connect(function()
+    if isClosed then return end
+    if isPlaying then
+        togglePause()
+    else
+        playSound()
+    end
+end)
+
+stopButton.MouseButton1Click:Connect(function()
+    if isClosed then return end
+    stopSound()
+end)
+
+minimizeButton.MouseButton1Click:Connect(toggleMinimize)
+closeButton.MouseButton1Click:Connect(closePlayer)
+
+-- Обработка нажатия Enter в поле ввода
+inputBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed and not isClosed then
+        if isPlaying then
+            stopSound()
+        end
+        playSound()
+    end
+end)
+
+-- Анимации при наведении на кнопки
+local function setupButtonHover(button)
+    local originalSize = button.Size
+    local originalColor = button.BackgroundColor3
+    
+    button.MouseEnter:Connect(function()
+        if isClosed then return end
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local sizeTween = TweenService:Create(button, tweenInfo, {Size = originalSize + UDim2.new(0, 5, 0, 5)})
+        local colorTween = TweenService:Create(button, tweenInfo, {BackgroundColor3 = originalColor:Lerp(Color3.new(1, 1, 1), 0.2)})
+        
+        sizeTween:Play()
+        colorTween:Play()
+    end)
+    
+    button.MouseLeave:Connect(function()
+        if isClosed then return end
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local sizeTween = TweenService:Create(button, tweenInfo, {Size = originalSize})
+        local colorTween = TweenService:Create(button, tweenInfo, {BackgroundColor3 = originalColor})
+        
+        sizeTween:Play()
+        colorTween:Play()
+    end)
+end
+
+setupButtonHover(playButton)
+setupButtonHover(stopButton)
+setupButtonHover(minimizeButton)
+setupButtonHover(closeButton)
+
+-- Функция для перетаскивания окна
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isClosed then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+title.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging and not isClosed then
+        update(input)
+    end
+end)
+
+-- Инициализация ползунков
+updateSliders()
+
+print("Музыкальный плеер загружен! Используйте ID 142376088 для звука по умолчанию")
